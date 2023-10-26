@@ -1,7 +1,39 @@
-import React from 'react'
+import axios from 'axios';
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom';
 
 const Login = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/user/login`, {
+                email,
+                password
+            });
+            console.log(response)
+            if (response.data.result === 'success') {
+                alert('Login Successfull');
+                localStorage.setItem('token', response.data.token);
+            }
+        } catch (error) {
+            console.log(error)
+            if (error.response.data.result) {
+                if (error.response.data.result == 'Failed') {
+                    alert('Invalid Password');
+                }
+                if (error.response.data.result == 'notExist') {
+                    alert('User Not Found!')
+                }
+                if (error.response.data.result == 'error') {
+                    alert('Something went wrong...')
+                }
+            }
+        }
+    }
+
     return (
         <>
             <section className="vh-100 bg-image">

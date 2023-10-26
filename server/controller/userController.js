@@ -1,5 +1,6 @@
 const userDB = require("../model/userModel");
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 exports.register = async (req, res) => {
     const name = req.body.name;
@@ -25,6 +26,35 @@ exports.register = async (req, res) => {
     }
 }
 
-exports.login = (req, res) => {
+exports.login = async (req, res) => {
+    const email = req.body.email;
+    const password = req.body.password;
 
+    try {
+        let data = await userDB.findOne({
+            where: {
+                email: email
+            }
+        })
+
+        if (data) {
+            const checkLogin = await bcrypt.compare(password, data.password)
+            if (checkLogin) {
+                res.status(201).json({ result: 'success', token: generateAccessToken(data.id) });
+            }
+            else {
+                res.status(401).json({ result: 'Failed' });
+            }
+        }
+        else {
+            res.status(404).json({ result: 'notExist' })
+        }
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ result: 'error' })
+    }
+}
+
+function generateAccessToken(id) {
+    return jwt.sign({ userid: id }, process.env.SECRETKEY);
 }
