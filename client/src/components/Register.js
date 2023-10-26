@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -82,8 +82,8 @@ const Register = () => {
                                                     className="btn btn-primary btn-block btn-lg gradient-custom-4 text-light" id='btn'>Register</button>
                                             </div>
 
-                                            <p className="text-center text-muted mt-2 mb-0">Have already an account? <a href="#!"
-                                                className="fw-bold text-body"><u>Login here</u></a></p>
+                                            <p className="text-center text-muted mt-2 mb-0">Have already an account? <Link to="/login"
+                                                className="fw-bold text-body"><u>Login here</u></Link></p>
 
                                         </form>
 
