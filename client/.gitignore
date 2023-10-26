@@ -30,3 +30,5 @@ logo.svg
 reportWebVitals.js
 setupTests.js
 package-lock.json
+.env
+README.md

@@ -8,7 +8,11 @@ const port = 4000
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-app.use(cors());
+app.use(cors({
+    origin: "*",
+    credentials: true,
+    methods: ['GET', 'POST']
+}));
 
 app.use('/user', userRouter);
 
