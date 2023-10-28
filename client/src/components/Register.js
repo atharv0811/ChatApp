@@ -41,59 +41,119 @@ const Register = () => {
 
     return (
         <>
-            <section className="vh-100 bg-image">
-                <div className="mask d-flex align-items-center h-100 gradient-custom-3">
-                    <div className="container h-100">
-                        <div className="row d-flex justify-content-center align-items-center h-70">
-                            <div className="col-12 col-md-9 col-lg-7 col-xl-6 mt-3 mb-3">
-                                <div className="card">
-                                    <div className="card-body p-5">
-                                        <h2 className="text-uppercase text-center mb-4">Create an account</h2>
+            <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
+                <div className="sm:mx-auto sm:w-full sm:max-w-sm">
+                    <h2 className="mt-5 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
+                        Register your account
+                    </h2>
+                </div>
 
-                                        <form className="register-form" id="register-form" onSubmit={handleSubmit}>
-
-                                            <div className="form-outline mb-4">
-                                                <label className="form-label" htmlFor="name">Name</label>
-                                                <input type="text" id="name" className="form-control form-control-lg" value={name} onChange={(e) => setName(e.target.value)} />
-                                            </div>
-
-                                            <div className="form-outline mb-4">
-                                                <label className="form-label" htmlFor="email">Email</label>
-                                                <input type="email" id="email" className="form-control form-control-lg" value={email} onChange={(e) => setEmail(e.target.value)} />
-                                            </div>
-
-                                            <div className="form-outline mb-4">
-                                                <label className="form-label" htmlFor="phoneNo">Phone Number</label>
-                                                <input type="number" id="phoneNo" className="form-control form-control-lg" value={phoneNo} onChange={(e) => setPhoneNo(e.target.value)} />
-                                            </div>
-
-                                            <div className="form-outline mb-4">
-                                                <label className="form-label" htmlFor="password">Password</label>
-                                                <input type="password" id="password" className="form-control form-control-lg" value={password} onChange={(e) => setPassword(e.target.value)} />
-                                            </div>
-
-                                            <div className="form-outline mb-4">
-                                                <label className="form-label" htmlFor="repeatePassword">Repeat your password</label>
-                                                <input type="password" id="repeatePassword" className="form-control form-control-lg" value={repeatPassword} onChange={(e) => setRepeatPassword(e.target.value)} />
-                                            </div>
-
-                                            <div className="d-flex justify-content-center">
-                                                <button type="submit"
-                                                    className="btn btn-primary btn-block btn-lg gradient-custom-4 text-light" id='btn'>Register</button>
-                                            </div>
-
-                                            <p className="text-center text-muted mt-2 mb-0">Have already an account? <Link to="/login"
-                                                className="fw-bold text-body"><u>Login here</u></Link></p>
-
-                                        </form>
-
-                                    </div>
-                                </div>
+                <div className="mt-5 sm:mx-auto sm:w-full sm:max-w-sm">
+                    <form className="space-y-6" onSubmit={handleSubmit}>
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium leading-6 text-gray-900">
+                                Name
+                            </label>
+                            <div className="mt-2">
+                                <input
+                                    id="name"
+                                    name="name"
+                                    type="text"
+                                    required
+                                    className="block w-full rounded-md border-0 py-1.5 px-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                />
                             </div>
                         </div>
-                    </div>
+
+                        <div>
+                            <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
+                                Email address
+                            </label>
+                            <div className="mt-2">
+                                <input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    autoComplete="email"
+                                    required
+                                    className="block w-full rounded-md border-0 py-1.5 px-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="phoneNo" className="block text-sm font-medium leading-6 text-gray-900">
+                                Phone Number
+                            </label>
+                            <div className="mt-2">
+                                <input
+                                    id="phoneNo"
+                                    name="phoneNo"
+                                    type="number"
+                                    required
+                                    className="block w-full rounded-md border-0 py-1.5 px-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                    value={phoneNo}
+                                    onChange={(e) => setPhoneNo(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
+                                Password
+                            </label>
+                            <div className="mt-2">
+                                <input
+                                    id="password"
+                                    name="password"
+                                    type="password"
+                                    required
+                                    className="block w-full rounded-md border-0 py-1.5 px-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="repeatePassword" className="block text-sm font-medium leading-6 text-gray-900">
+                                Repeat your password
+                            </label>
+                            <div className="mt-2">
+                                <input
+                                    id="repeatePassword"
+                                    name="repeatePassword"
+                                    type="password"
+                                    required
+                                    className="block w-full rounded-md border-0 py-1.5 px-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                                    value={repeatPassword}
+                                    onChange={(e) => setRepeatPassword(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <button
+                                type="submit"
+                                className="flex w-full justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                            >
+                                Register
+                            </button>
+                        </div>
+                    </form>
+
+                    <p className="mt-10 text-center text-sm text-gray-500">
+                        Have already an account?{' '}
+                        <Link to="/login" className="font-semibold leading-6 text-indigo-600 hover:text-indigo-500">
+                            Login here
+                        </Link>
+                    </p>
                 </div>
-            </section>
+            </div>
         </>
     )
 }
