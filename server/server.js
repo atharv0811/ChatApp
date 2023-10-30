@@ -4,6 +4,9 @@ require('dotenv').config();
 const cors = require("cors");
 const userRouter = require('./routes/userRoutes');
 const sequelize = require("./db");
+const chatRouter = require("./routes/chatRoutes");
+const ChatMembersData = require("./model/chatMemberModel");
+const userDB = require("./model/userModel");
 const app = express()
 const port = 4000
 
@@ -16,6 +19,10 @@ app.use(cors({
 }));
 
 app.use('/user', userRouter);
+app.use('/chat', chatRouter);
+
+userDB.hasMany(ChatMembersData);
+ChatMembersData.belongsTo(userDB);
 
 sequelize.sync()
     .then(() => {
