@@ -1,6 +1,7 @@
 const userDB = require('../model/userModel');
 const chatMemberModel = require('../model/chatMemberModel');
 const chatStorageModel = require('../model/chatStorageModel');
+const moment = require('moment/moment')
 const crypto = require('crypto');
 
 exports.addContact = async (req, res) => {
@@ -63,18 +64,57 @@ exports.getChatList = async (req, res) => {
 
 exports.addMessage = async (req, res) => {
     try {
+        const currentDateTime = moment().format('DD/MM/YYYY, hh:mm:ss A');
         const messageText = req.body.data.messageText;
         const senderId = req.user.id;
+        const memberId = parseInt(req.body.data.memberId);
 
 
         await chatStorageModel.create({
             id: getRandomInt(100000, 999999),
+            recipeintId: memberId,
             messageText: messageText,
+            date: currentDateTime,
             userDatumId: senderId
         })
         return res.status(201).json('success');
     } catch (error) {
         console.log(error)
+    }
+}
+
+exports.getChat = async (req, res) => {
+    try {
+        const userId = parseInt(req.user.id);
+        const memberId = parseInt(req.body.memberId);
+
+        let chatListFirstCondition = await chatStorageModel.findAll({
+            where: {
+                recipeintId: memberId
+            },
+            order: [['date', 'DESC']],
+            limit: 5
+        });
+
+        let chatListSecondCondition = await chatStorageModel.findAll({
+            where: {
+                recipeintId: userId,
+                userDatumId: memberId
+            },
+            order: [['date', 'DESC']],
+            limit: 5
+        });
+
+        let combinedChatList = chatListFirstCondition.concat(chatListSecondCondition);
+        combinedChatList.sort((a, b) => {
+            const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
+            const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
+            return dateA - dateB;
+        });
+        return res.status(201).json(combinedChatList);
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: 'Internal Server Error' });
     }
 }
 

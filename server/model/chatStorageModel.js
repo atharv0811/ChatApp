@@ -7,8 +7,16 @@ const chatStorageDb = sequelize.define('chatStorage', {
         primaryKey: true,
         allowNull: false
     },
+    recipeintId: {
+        type: Sequelize.INTEGER,
+        allowNull: false
+    },
     messageText: {
         type: Sequelize.TEXT,
+        allowNull: false
+    },
+    date: {
+        type: Sequelize.STRING,
         allowNull: false
     }
 });

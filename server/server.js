@@ -7,6 +7,7 @@ const sequelize = require("./db");
 const chatRouter = require("./routes/chatRoutes");
 const ChatMembersData = require("./model/chatMemberModel");
 const userDB = require("./model/userModel");
+const chatStorageDb = require("./model/chatStorageModel");
 const app = express()
 const port = 4000
 
@@ -23,6 +24,8 @@ app.use('/chat', chatRouter);
 
 userDB.hasMany(ChatMembersData);
 ChatMembersData.belongsTo(userDB);
+userDB.hasMany(chatStorageDb);
+chatStorageDb.belongsTo(userDB);
 
 sequelize.sync()
     .then(() => {
