@@ -55,10 +55,7 @@ const ChatPage = () => {
             }
         };
 
-        // fetchData();
-        setInterval(() => {
-            fetchData()
-        }, 1000);
+        fetchData();
     }, []);
 
     const sendMessage = async (e) => {
