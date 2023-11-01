@@ -55,10 +55,14 @@ const ChatPage = () => {
             }
         };
 
-        fetchData();
+        // fetchData();
+        setInterval(() => {
+            fetchData()
+        }, 1000);
     }, []);
 
-    const sendMessage = async () => {
+    const sendMessage = async (e) => {
+        e.preventDefault();
         const data = { memberId: memberId, messageText: messageText };
         await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/add-message`, { data }, {
             headers: {
@@ -95,7 +99,6 @@ const ChatPage = () => {
                     'Authorization': localStorage.getItem('token')
                 }
             });
-            // console.log(result)
             if (result) {
                 const jsonData = JSON.stringify(result.data);
                 localStorage.setItem(`${chatId}one`, jsonData);
@@ -108,6 +111,8 @@ const ChatPage = () => {
             }
         }
     }
+
+
 
     return (
         <>
@@ -181,7 +186,7 @@ const ChatPage = () => {
 
                 {selectedChat && (
                     <div className="w-4/6 h-screen flex flex-col items-center">
-                        <div className="w-3/4 h-14 bg-sky-100 my-3 rounded-full flex items-center px-2">
+                        <div className="w-3/4 h-14 bg-sky-200 my-3 rounded-full flex items-center px-2">
                             <img src={Avatar} alt="" width={40} height={40} />
                             <div className="ml-5">
                                 <h3 className="text-lg">{displayName}</h3>
@@ -193,7 +198,7 @@ const ChatPage = () => {
                                 (type === 'one' && (
                                     <div className="px-10 pt-5">
                                         <div key={index} className={`flex justify-${message.recipeintId === memberId ? 'end' : 'start'}`}>
-                                            <div className={`max-w-[40%] bg-sky-600 rounded-b-xl rounded-${message.recipeintId === memberId ? 'tl-xl' : 'tr-xl'} p-4 mb-4 text-white`}>
+                                            <div className={`max-w-[40%] bg-sky-${message.recipeintId === memberId ? '600' : '500'} rounded-b-xl rounded-${message.recipeintId === memberId ? 'tl-xl' : 'tr-xl'} p-4 mb-4 text-white`}>
                                                 <p>
                                                     {message.messageText}
                                                 </p>

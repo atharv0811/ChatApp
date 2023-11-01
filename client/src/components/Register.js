@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import { message } from 'antd';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -20,22 +21,22 @@ const Register = () => {
                     password
                 });
                 if (response.data.result === 'success') {
-                    alert('Registration Successfull!')
+                    message.success('Registration Successfull!')
                     navigate('/login')
                 }
                 else if (response.data.result === "exist") {
-                    alert("User already exists!");
+                    message.error("User already exists!");
                 }
                 else {
-                    alert('Something went wrong!')
+                    message.error('Something went wrong!')
                 }
 
             } catch (error) {
                 console.log(error)
-                alert('Something went wrong!')
+                message.error('Something went wrong!')
             }
         } else {
-            alert('Passwords do not match.');
+            message.error('Passwords do not match.');
         }
     }
 

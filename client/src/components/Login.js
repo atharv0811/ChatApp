@@ -1,6 +1,7 @@
 import axios from 'axios';
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
+import { message } from 'antd';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -16,7 +17,7 @@ const Login = () => {
             });
             console.log(response)
             if (response.data.result === 'success') {
-                alert('Login Successfull');
+                message.success('Login Successfull')
                 localStorage.setItem('token', response.data.token);
                 navigate('/')
             }
@@ -24,13 +25,13 @@ const Login = () => {
             console.log(error)
             if (error.response.data.result) {
                 if (error.response.data.result === 'Failed') {
-                    alert('Invalid Password');
+                    message.error('Invalid Password')
                 }
                 if (error.response.data.result === 'notExist') {
-                    alert('User Not Found!')
+                    message.error('User Not Found!')
                 }
                 if (error.response.data.result === 'error') {
-                    alert('Something went wrong...')
+                    message.error('Something went wrong...')
                 }
             }
         }
