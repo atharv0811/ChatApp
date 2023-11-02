@@ -8,6 +8,9 @@ const chatRouter = require("./routes/chatRoutes");
 const ChatMembersData = require("./model/chatMemberModel");
 const userDB = require("./model/userModel");
 const chatStorageDb = require("./model/chatStorageModel");
+const GroupName = require("./model/groupModel");
+const GroupMembers = require("./model/groupMemberModel");
+const GroupChatStorage = require("./model/groupStorageModel");
 const app = express()
 const port = 4000
 
@@ -26,6 +29,14 @@ userDB.hasMany(ChatMembersData);
 ChatMembersData.belongsTo(userDB);
 userDB.hasMany(chatStorageDb);
 chatStorageDb.belongsTo(userDB);
+userDB.hasMany(GroupName);
+GroupName.belongsTo(userDB);
+userDB.hasMany(GroupMembers);
+GroupMembers.belongsTo(userDB);
+GroupName.hasMany(GroupMembers);
+GroupMembers.belongsTo(GroupName);
+GroupName.hasMany(GroupChatStorage);
+GroupChatStorage.belongsTo(GroupName);
 
 sequelize.sync()
     .then(() => {
