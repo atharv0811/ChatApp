@@ -27,13 +27,13 @@ exports.register = async (req, res) => {
 }
 
 exports.login = async (req, res) => {
-    const email = req.body.email;
+    const phoneNo = req.body.phoneNo;
     const password = req.body.password;
 
     try {
         let data = await userDB.findOne({
             where: {
-                email: email
+                phoneNo: phoneNo
             }
         })
 

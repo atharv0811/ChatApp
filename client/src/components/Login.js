@@ -5,14 +5,14 @@ import { message } from 'antd';
 
 const Login = () => {
     const navigate = useNavigate();
-    const [email, setEmail] = useState('');
+    const [phoneNo, setPhoneNo] = useState('');
     const [password, setPassword] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             const response = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/user/login`, {
-                email,
+                phoneNo,
                 password
             });
             console.log(response)
@@ -55,19 +55,19 @@ const Login = () => {
                 <div className="mt-5 sm:mx-auto sm:w-full sm:max-w-sm">
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div>
-                            <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
-                                Email address
+                            <label htmlFor="phoneNo" className="block text-sm font-medium leading-6 text-gray-900">
+                                Phone Number
                             </label>
                             <div className="mt-2">
                                 <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    autoComplete="email"
+                                    id="phoneNo"
+                                    name="phoneNo"
+                                    type="number"
+                                    autoComplete="phoneNo"
                                     required
                                     className="block w-full rounded-md border-0 py-1.5 px-2.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    value={phoneNo}
+                                    onChange={(e) => setPhoneNo(e.target.value)}
                                 />
                             </div>
                         </div>
