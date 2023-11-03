@@ -6,7 +6,9 @@ const crypto = require('crypto');
 const groupNameData = require('../model/groupModel');
 const groupMember = require('../model/groupMemberModel');
 const groupMemberModel = require('../model/groupMemberModel');
-const groupChatStorage = require('../model/groupStorageModel')
+const groupChatStorage = require('../model/groupStorageModel');
+const { Sequelize } = require('sequelize');
+const sequelize = require('../db');
 
 exports.addContact = async (req, res) => {
     try {
@@ -141,6 +143,7 @@ exports.getChat = async (req, res) => {
 exports.createGroup = async (req, res) => {
     try {
         const id = req.user.id;
+        const name = req.user.name;
         const group_name = req.body.data.Groupname;
         const group = await groupNameData.create({
             id: getRandomInt(100000, 999999),
@@ -151,6 +154,8 @@ exports.createGroup = async (req, res) => {
         const GroupId = group.id;
         await groupMember.create({
             id: getRandomInt(100000, 999999),
+            ContactName: name,
+            isAdmin: true,
             userDatumId: id,
             GroupNameId: GroupId
         });
@@ -163,24 +168,67 @@ exports.createGroup = async (req, res) => {
 
 exports.getMembersList = async (req, res) => {
     try {
+        const action = req.body.action;
         const userId = parseInt(req.user.id);
-        const result = await chatMemberModel.findAll({ where: { userDatumId: userId } });
-        res.status(201).json(result);
+        const groupId = parseInt(req.body.memberId);
+        if (action == 'addMember') {
+            const result = await chatMemberModel.findAll({
+                where: {
+                    userDatumId: userId,
+                    memberId: {
+                        [Sequelize.Op.notIn]: sequelize.literal(`(SELECT userDatumId FROM GroupMembers WHERE GroupNameId = ${groupId})`)
+                    }
+                }
+            });
+            return res.status(201).json(result);
+        }
+        if (action == 'removeMember') {
+            const result = await groupMember.findAll({
+                where: {
+                    GroupNameId: groupId
+                }
+            })
+            return res.status(201).json(result)
+        }
+        if (action == 'setAdmin') {
+            const result = await groupMember.findAll({
+                where: {
+                    GroupNameId: groupId,
+                    isAdmin: 0
+                }
+            })
+            return res.status(201).json(result)
+        }
+        // const result = await chatMemberModel.findAll({ where: { userDatumId: userId } });
+        // res.status(201).json(result);
     } catch (error) {
         console.log(error);
     }
 }
 
-exports.addMemberToGroup = async (req, res) => {
+exports.actionOnGroup = async (req, res) => {
     try {
         const GroupId = parseInt(req.body.data.groupId);
         const MemberId = parseInt(req.body.data.memberId);
-        await groupMemberModel.create({
-            id: getRandomInt(100000, 999999),
-            userDatumId: MemberId,
-            GroupNameId: GroupId
-        })
-        return res.status(201).json({ message: "Member Added" });
+        const name = req.body.data.contactName;
+        const action = req.body.data.action;
+        if (action === 'addMember') {
+            await groupMemberModel.create({
+                id: getRandomInt(100000, 999999),
+                ContactName: name,
+                userDatumId: MemberId,
+                GroupNameId: GroupId
+            })
+            return res.status(201).json({ message: "success" });
+        }
+        if (action === 'removeMember') {
+            await groupMember.destroy({ where: { userDatumId: MemberId, GroupNameId: GroupId } });
+            return res.status(201).json({ message: "success" });
+        }
+        if (action === 'setAdmin') {
+            await groupMember.update({ isAdmin: 1 }, { where: { userDatumId: MemberId, GroupNameId: GroupId } })
+            return res.status(201).json({ message: "success" });
+        }
     } catch (error) {
         console.log(error)
     }
@@ -208,6 +256,7 @@ exports.addMessageToGroup = async (req, res) => {
 exports.getChatFromGroup = async (req, res) => {
     try {
         const groupId = parseInt(req.body.groupId);
+        const userId = parseInt(req.user.id);
         let result = await groupChatStorage.findAll({
             where: {
                 GroupNameId: groupId
@@ -215,14 +264,19 @@ exports.getChatFromGroup = async (req, res) => {
             order: [['date', 'DESC']],
             limit: 10
         });
-        result.sort((a, b) => {
-            const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
-            const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
-            return dateA - dateB;
+        let isAdmin = await groupMember.findOne({
+            where: {
+                userDatumId: userId,
+                GroupNameId: groupId,
+                isAdmin: 1
+            },
+            attributes: ['isAdmin']
         });
-        res.status(200).send(result);
+        result.sort((a, b) => b.date - a.date)
+        res.status(200).send({ isAdmin: isAdmin ? isAdmin.isAdmin : false, result: result });
     } catch (error) {
         console.log(error)
+        res.status(500).send('Internal Server Error');
     }
 }
 

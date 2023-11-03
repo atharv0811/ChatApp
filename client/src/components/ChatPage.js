@@ -21,6 +21,9 @@ const ChatPage = () => {
     const [groupName, setGroupName] = useState('');
     const [isMenuModalOpen, setMenuModalOpen] = useState(false)
     const [MemberList, setMembersList] = useState([]);
+    const [menuVisible, setMenuVisible] = useState(false);
+    const [isAdmin, setAdmin] = useState(false);
+    const [action, setAction] = useState('');
 
 
     const formattedDate = (date) => {
@@ -148,27 +151,32 @@ const ChatPage = () => {
                 }
             });
             console.log(result)
-            if (result) {
-                const jsonData = JSON.stringify(result.data);
-                localStorage.setItem(`${chatId}many`, jsonData);
-                const data = JSON.parse(localStorage.getItem(`${chatId}many`));
-                setMemberId(chatId);
-                setSelectedChat(data);
+            if (result.data.isAdmin) {
+                setAdmin(true);
             }
-            else {
+
+            if (result.data.result) {
+                setMemberId(chatId);
+                setSelectedChat(result.data.result);
+            } else {
                 setSelectedChat([]);
             }
         }
     }
 
-    const opneMenuModel = () => {
-        fetchMembers()
+    const menuClick = () => {
+        setMenuVisible(!menuVisible)
+    }
+
+    const handleMenuItemClick = (action) => {
+        setAction(action)
+        fetchMembers(action)
         setMenuModalOpen(true)
     }
 
-    async function fetchMembers() {
+    async function fetchMembers(action) {
         const token = localStorage.getItem('token');
-        const result = await axios.get(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/getMembersList`, {
+        const result = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/getMembersList`, { action, memberId }, {
             headers: {
                 "Authorization": token
             }
@@ -176,9 +184,9 @@ const ChatPage = () => {
         setMembersList(result.data);
     }
 
-    const onAddMember = async (ListMemberId) => {
-        const data = { memberId: ListMemberId, groupId: memberId };
-        await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/add-group-member`, { data }, {
+    const actionOnGroup = async (ListMemberId, action, contactName) => {
+        const data = { memberId: ListMemberId, groupId: memberId, contactName: contactName, action: action };
+        await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/actionOnGroup`, { data }, {
             headers: {
                 'Authorization': localStorage.getItem('token')
             }
@@ -186,6 +194,7 @@ const ChatPage = () => {
     }
 
     const userId = localStorage.getItem('token') ? jwtDecode(localStorage.getItem('token')).userid : null
+
     return (
         <>
             <div className="w-screen flex bg-sky-50">
@@ -309,20 +318,75 @@ const ChatPage = () => {
                                 <h3 className="text-lg">{displayName}</h3>
                                 {/* <p className='text-sm font-light text-gray-500'>online</p> */}
                             </div>
-                            <div className="cursor-pointer" onClick={opneMenuModel}>
-                                <i className="fa-solid fa-ellipsis-vertical mr-4"></i>
+                            <div className="cursor-pointer" >
+                                <i className="fa-solid fa-ellipsis-vertical mr-4" onClick={menuClick}></i>
+
+                                {menuVisible && type === 'many' && (
+                                    <div>
+                                        {isAdmin && (
+                                            <div>
+                                                <button className="btn btn-primary btn-sm" onClick={() => handleMenuItemClick('addMember')}>Add Member</button>
+                                                <button className="btn btn-primary btn-sm" onClick={() => handleMenuItemClick('setAdmin')}>Set Admin</button>
+                                                <button className="btn btn-primary btn-sm" onClick={() => handleMenuItemClick('removeMember')}>Remove Member</button>
+                                            </div>
+                                        )}
+                                        <button className="btn btn-primary btn-sm" onClick={() => handleMenuItemClick('leaveGroup')}>Leave Group</button>
+                                    </div>
+                                )}
+
+                                {menuVisible && (type === 'one' && (
+                                    <div className="menu">
+                                        <button className="btn btn-primary btn-sm" onClick={() => handleMenuItemClick('addMember')}>Save contact</button>
+                                        <button className="btn btn-primary btn-sm" onClick={() => handleMenuItemClick('removeMember')}>Delete Contact</button>
+                                    </div>
+                                ))
+                                }
                             </div>
                         </div>
 
                         <Modal title="Member List" open={isMenuModalOpen} onCancel={handleCancel} footer={false}>
-                            {MemberList.map((member, index) => (
-                                <div className="flex justify-between mt-3">
-                                    <p className="flex items-center" key={index}>{member.ContactName}</p>
-                                    <button className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" onClick={() => onAddMember(member.memberId)}>
-                                        Add
-                                    </button>
-                                </div>
-                            ))}
+                            {action === 'addMember' && (
+                                <>
+                                    {
+                                        MemberList.map((member, index) => (
+                                            <div className="flex justify-between mt-3">
+                                                <p className="flex items-center" key={index}>{member.ContactName}</p>
+                                                <button className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" onClick={() => actionOnGroup(member.memberId, action, member.ContactName)}>
+                                                    Add
+                                                </button>
+                                            </div>
+                                        ))
+                                    }
+                                </>
+                            )}
+                            {action === 'setAdmin' && (
+                                <>
+                                    {
+                                        MemberList.map((member, index) => (
+                                            <div className="flex justify-between mt-3">
+                                                <p className="flex items-center" key={index}>{member.ContactName}</p>
+                                                <button className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" onClick={() => actionOnGroup(member.userDatumId, action)}>
+                                                    Set Admin
+                                                </button>
+                                            </div>
+                                        ))
+                                    }
+                                </>
+                            )}
+                            {action === 'removeMember' && (
+                                <>
+                                    {
+                                        MemberList.map((member, index) => (
+                                            <div className="flex justify-between mt-3">
+                                                <p className="flex items-center" key={index}>{member.ContactName}</p>
+                                                <button className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" onClick={() => actionOnGroup(member.userDatumId, action)}>
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        ))
+                                    }
+                                </>
+                            )}
                         </Modal>
 
                         <div className="h-3/4 w-full overflow-auto scrollbar-hide border-b">
