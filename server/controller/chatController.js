@@ -86,7 +86,7 @@ exports.getChatList = async (req, res) => {
 
 exports.addMessage = async (req, res) => {
     try {
-        const currentDateTime = moment().format('DD/MM/YYYY, hh:mm:ss A');
+        const currentDateTime = req.body.data.currentDateTime;
         const messageText = req.body.data.messageText;
         const senderId = req.user.id;
         const memberId = parseInt(req.body.data.memberId);
@@ -123,8 +123,9 @@ exports.getChat = async (req, res) => {
                 recipeintId: userId,
                 userDatumId: memberId
             },
+            attributes: ['messageText', 'date', 'userDatumId', 'recipeintId'],
             order: [['date', 'DESC']],
-            limit: 5
+            // limit: 5
         });
 
         let combinedChatList = chatListFirstCondition.concat(chatListSecondCondition);
@@ -272,7 +273,11 @@ exports.getChatFromGroup = async (req, res) => {
             },
             attributes: ['isAdmin']
         });
-        result.sort((a, b) => b.date - a.date)
+        result.sort((a, b) => {
+            const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
+            const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
+            return dateA - dateB;
+        });
         res.status(200).send({ isAdmin: isAdmin ? isAdmin.isAdmin : false, result: result });
     } catch (error) {
         console.log(error)

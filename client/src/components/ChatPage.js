@@ -5,6 +5,10 @@ import Avatar from "../assets/avatar.svg";
 import { jwtDecode } from 'jwt-decode'
 import { Modal } from 'antd'
 import { SendOutlined, PlusCircleOutlined } from "@ant-design/icons";
+import isEqual from 'lodash/isEqual';
+import io from 'socket.io-client';
+
+const socket = io(process.env.REACT_APP_BACKEND_HOST_NAME);
 
 const ChatPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -24,6 +28,8 @@ const ChatPage = () => {
     const [menuVisible, setMenuVisible] = useState(false);
     const [isAdmin, setAdmin] = useState(false);
     const [action, setAction] = useState('');
+    const [chatIdofMember, setchatIdofMember] = useState('');
+    const [latestMessageFromMember, setlatestMessageFromMember] = useState([]);
 
 
     const formattedDate = (date) => {
@@ -84,15 +90,75 @@ const ChatPage = () => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        if (latestMessageFromMember) {
+            const updatedMessages = latestMessages.map(messageInfo => {
+                if (messageInfo.chatId === latestMessageFromMember.chatId) {
+                    return {
+                        chatId: latestMessageFromMember.chatId,
+                        message: latestMessageFromMember.message,
+                        time: moment(latestMessageFromMember.time, 'DD/MM/YYYY, hh:mm:ss A').format('MMMM Do YYYY, h:mm a')
+                    };
+                }
+                return messageInfo;
+            });
+            setLatestMessages([...updatedMessages]);
+        }
+    }, [latestMessageFromMember]);
+
+    useEffect(() => {
+        socket.on('receive-message', (data) => {
+            if (data.type === 'one') {
+                const receivedMessage = {
+                    messageText: data.messageText,
+                    date: data.date,
+                    userDatumId: data.userDatumId,
+                    recipeintId: data.recipeintId
+                };
+                if (selectedChat.length === 0 || !isEqual(selectedChat[selectedChat.length - 1], receivedMessage)) {
+                    setSelectedChat(prevChat => [...prevChat, receivedMessage]);
+                    setlatestMessageFromMember({
+                        chatId: chatIdofMember,
+                        message: data.messageText,
+                        time: data.date
+                    })
+                }
+            }
+            else if (data.type === 'many') {
+                const receivedMessage = {
+                    messageText: data.messageText,
+                    date: data.date,
+                    senderId: data.senderId,
+                    GroupNameDatumId: data.GroupNameDatumId
+                };
+                if (selectedChat.length === 0 || !isEqual(selectedChat[selectedChat.length - 1], receivedMessage)) {
+                    setSelectedChat(prevChat => [...prevChat, receivedMessage]);
+                    setlatestMessageFromMember({
+                        chatId: chatIdofMember,
+                        message: data.messageText,
+                        time: data.date
+                    })
+                }
+            }
+        });
+        return () => {
+            socket.off('receive-message');
+        };
+    }, [type, memberId, selectedChat, chatIdofMember]);
+
     const sendMessage = async (e) => {
         e.preventDefault();
-        const data = { memberId: memberId, messageText: messageText };
+        const currentDateTime = moment().format('DD/MM/YYYY, hh:mm:ss A')
+        const data = { memberId: memberId, messageText: messageText, currentDateTime: currentDateTime };
         if (type === 'one') {
             await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/add-message`, { data }, {
                 headers: {
                     'Authorization': localStorage.getItem('token')
                 }
             });
+
+            const messageData = { recipeintId: memberId, date: currentDateTime, messageText: messageText, userDatumId: userId, type: type }
+            socket.emit('send-message', messageData);
         }
         else if (type === 'many') {
             await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/add-message-to-group`, { data }, {
@@ -100,16 +166,20 @@ const ChatPage = () => {
                     'Authorization': localStorage.getItem('token')
                 }
             });
+
+            const messageData = { GroupNameDatumId: memberId, date: currentDateTime, messageText: messageText, senderId: userId, type: type }
+            socket.emit('send-message', messageData);
         }
         await fetchChat(memberId)
         setMessageText('')
     };
 
-    const chatClick = async (chatId, displayName, type) => {
+    const chatClick = async (chatId, displayName, type, id) => {
         try {
             setType(type);
             await fetchChat(chatId)
             setDisplayName(displayName);
+            setchatIdofMember(id);
         } catch (err) {
             console.log(err);
         }
@@ -132,11 +202,8 @@ const ChatPage = () => {
                 }
             });
             if (result) {
-                const jsonData = JSON.stringify(result.data);
-                localStorage.setItem(`${chatId}one`, jsonData);
-                const data = JSON.parse(localStorage.getItem(`${chatId}one`));
                 setMemberId(chatId);
-                setSelectedChat(data);
+                setSelectedChat(result.data);
             }
             else {
                 setSelectedChat([]);

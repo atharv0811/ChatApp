@@ -1,7 +1,15 @@
+const express = require('express');
+const app = express();
+const http = require('http').createServer(app);
 const bodyParser = require("body-parser");
-const express = require('express')
-require('dotenv').config();
+const io = require('socket.io')(http, {
+    cors: {
+        origin: "http://localhost:3000",
+        methods: ["GET", "POST"]
+    }
+});
 const cors = require("cors");
+require('dotenv').config();
 const userRouter = require('./routes/userRoutes');
 const sequelize = require("./db");
 const chatRouter = require("./routes/chatRoutes");
@@ -11,15 +19,12 @@ const chatStorageDb = require("./model/chatStorageModel");
 const GroupName = require("./model/groupModel");
 const GroupMembers = require("./model/groupMemberModel");
 const GroupChatStorage = require("./model/groupStorageModel");
-const app = express()
 const port = 4000
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cors({
-    origin: "*",
-    credentials: true,
-    methods: ['GET', 'POST']
+    origin: "*"
 }));
 
 app.use('/user', userRouter);
@@ -38,8 +43,15 @@ GroupMembers.belongsTo(GroupName);
 GroupName.hasMany(GroupChatStorage);
 GroupChatStorage.belongsTo(GroupName);
 
-sequelize.sync()
-    .then(() => {
-        app.listen(port)
+sequelize.sync({ force: false, logging: false }).then(() => {
+    http.listen(port, () => {
+        console.log(`Server listening on port ${port}`);
+    });
+})
+
+io.on('connection', socket => {
+    console.log('connected at' + socket.id)
+    socket.on('send-message', (data) => {
+        io.emit('receive-message', data)
     })
-    .catch(err => console.log(err))
+})
