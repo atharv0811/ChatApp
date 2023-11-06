@@ -19,6 +19,8 @@ const chatStorageDb = require("./model/chatStorageModel");
 const GroupName = require("./model/groupModel");
 const GroupMembers = require("./model/groupMemberModel");
 const GroupChatStorage = require("./model/groupStorageModel");
+const GroupFileModal = require('./model/groupFileModel');
+const ChatFileModal = require('./model/chatFileModel');
 const port = 4000
 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -42,6 +44,11 @@ GroupName.hasMany(GroupMembers);
 GroupMembers.belongsTo(GroupName);
 GroupName.hasMany(GroupChatStorage);
 GroupChatStorage.belongsTo(GroupName);
+userDB.hasMany(ChatFileModal);
+ChatFileModal.belongsTo(userDB);
+GroupName.hasMany(GroupFileModal);
+GroupFileModal.belongsTo(GroupName);
+
 
 sequelize.sync({ force: false, logging: false }).then(() => {
     http.listen(port, () => {
@@ -53,5 +60,8 @@ io.on('connection', socket => {
     console.log('connected at' + socket.id)
     socket.on('send-message', (data) => {
         io.emit('receive-message', data)
+    })
+    socket.on('send-file', (data) => {
+        io.emit('receive-file', data)
     })
 })

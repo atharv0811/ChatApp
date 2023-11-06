@@ -7,6 +7,9 @@ const groupNameData = require('../model/groupModel');
 const groupMember = require('../model/groupMemberModel');
 const groupMemberModel = require('../model/groupMemberModel');
 const groupChatStorage = require('../model/groupStorageModel');
+const GroupFileModal = require('../model/groupFileModel');
+const ChatFileModal = require('../model/chatFileModel');
+const AWS = require('aws-sdk');
 const { Sequelize } = require('sequelize');
 const sequelize = require('../db');
 
@@ -241,6 +244,8 @@ exports.addMessageToGroup = async (req, res) => {
         const messageText = req.body.data.messageText;
         const memberId = parseInt(req.body.data.memberId);
         const senderId = req.user.id;
+        const senderData = await chatMemberModel.findOne({ where: { memberId: senderId }, attributes: ['ContactName'] });
+        const senderName = senderData.ContactName;
         await groupChatStorage.create({
             id: getRandomInt(100000, 999999),
             senderId: senderId,
@@ -248,7 +253,7 @@ exports.addMessageToGroup = async (req, res) => {
             date: currentDateTime,
             GroupNameId: memberId
         })
-        return res.status(201).json('success');
+        return res.status(201).json({ userName: senderName, memberId: senderId });
     } catch (error) {
         console.log(error)
     }
@@ -256,16 +261,56 @@ exports.addMessageToGroup = async (req, res) => {
 
 exports.getChatFromGroup = async (req, res) => {
     try {
+        // const groupId = parseInt(req.body.groupId);
+        // const userId = parseInt(req.user.id);
+        // let result = await groupChatStorage.findAll({
+        //     where: {
+        //         GroupNameId: groupId
+        //     },
+        //     order: [['date', 'DESC']],
+        //     limit: 10
+        // });
+        // let isAdmin = await groupMember.findOne({
+        //     where: {
+        //         userDatumId: userId,
+        //         GroupNameId: groupId,
+        //         isAdmin: 1
+        //     },
+        //     attributes: ['isAdmin']
+        // });
+        // result.sort((a, b) => {
+        //     const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
+        //     const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
+        //     return dateA - dateB;
+        // });
+        // res.status(200).send({ isAdmin: isAdmin ? isAdmin.isAdmin : false, result: result });
+
+
         const groupId = parseInt(req.body.groupId);
         const userId = parseInt(req.user.id);
-        let result = await groupChatStorage.findAll({
+        const userNamesData = await chatMemberModel.findAll({ where: { userDatumId: userId }, attributes: ['ContactName', 'memberId'] });
+        const userNamesMap = new Map(userNamesData.map(data => [data.memberId, data.ContactName]));
+        const mapSenderIdToUserName = senderId => userNamesMap.get(senderId) || 'You';
+
+        let result1 = await groupChatStorage.findAll({
             where: {
                 GroupNameId: groupId
             },
             order: [['date', 'DESC']],
-            limit: 10
+            attributes: ['messageText', 'date', 'senderId', 'GroupNameId'],
+            // limit: 10
         });
-        let isAdmin = await groupMember.findOne({
+
+        // let result2 = await ChatGroupFileModal.findAll({
+        //     where: {
+        //         GroupNameDatumId: groupId
+        //     },
+        //     order: [['date', 'DESC']],
+        //     attributes: ['fileName', 'fileUrl', 'date', 'senderId', 'GroupNameDatumId'],
+        //     // limit: 10
+        // });
+
+        let isAdmin = await groupMemberModel.findOne({
             where: {
                 userDatumId: userId,
                 GroupNameId: groupId,
@@ -273,15 +318,86 @@ exports.getChatFromGroup = async (req, res) => {
             },
             attributes: ['isAdmin']
         });
+        let result = result1
+        result = result.map(item => ({
+            ...item.dataValues,
+            userName: mapSenderIdToUserName(item.dataValues.senderId)
+        }))
         result.sort((a, b) => {
             const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
             const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
             return dateA - dateB;
         });
-        res.status(200).send({ isAdmin: isAdmin ? isAdmin.isAdmin : false, result: result });
+        // console.log(result);
+        return res.status(200).send({ isAdmin: isAdmin ? isAdmin.isAdmin : false, result: result });
+
     } catch (error) {
         console.log(error)
         res.status(500).send('Internal Server Error');
+    }
+}
+
+exports.addfile = async (req, res) => {
+    try {
+        const currentDateTime = req.body.currentDateTime;
+        const filename = req.body.filename;
+        const memberId = parseInt(req.body.memberId);
+        const senderId = req.user.id;
+        const file = req.file;
+        const s3 = new AWS.S3({
+            accessKeyId: process.env.IAM_USER_KEY,
+            secretAccessKey: process.env.IAM_USER_SECRET
+        });
+        const params = {
+            Bucket: 'chatappfilebucket',
+            Key: filename,
+            Body: file.buffer,
+            ACL: 'public-read',
+        };
+        const s3Response = await s3.upload(params).promise();
+        await ChatFileModal.create({
+            id: getRandomInt(100000, 999999),
+            recipeintId: memberId,
+            fileName: filename,
+            fileUrl: s3Response.Location,
+            date: currentDateTime,
+            userDatumId: senderId
+        })
+        return res.status(201).json({ fileUrl: s3Response.Location });
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+exports.addfileToGroup = async (req, res) => {
+    try {
+        const currentDateTime = req.body.currentDateTime;
+        const filename = req.body.filename;
+        const memberId = parseInt(req.body.memberId);
+        const senderId = req.user.id;
+        const file = req.file;
+        const s3 = new AWS.S3({
+            accessKeyId: process.env.IAM_USER_KEY,
+            secretAccessKey: process.env.IAM_USER_SECRET
+        });
+        const params = {
+            Bucket: 'chatappfilebucket',
+            Key: filename,
+            Body: file.buffer,
+            ACL: 'public-read',
+        };
+        const s3Response = await s3.upload(params).promise();
+        await GroupFileModal.create({
+            id: getRandomInt(100000, 999999),
+            senderId: senderId,
+            fileName: filename,
+            date: currentDateTime,
+            fileUrl: s3Response.Location,
+            GroupNameDatumId: memberId
+        })
+        return res.status(201).json({ fileUrl: s3Response.Location });
+    } catch (error) {
+        console.log(error)
     }
 }
 

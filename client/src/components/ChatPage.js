@@ -125,6 +125,14 @@ const ChatPage = () => {
                 }
             }
             else if (data.type === 'many') {
+                console.log(data)
+                let userName;
+                if (data.userData.memberId === userId) {
+                    userName = 'You'
+                }
+                else {
+                    userName = data.userData.userName;
+                }
                 const receivedMessage = {
                     messageText: data.messageText,
                     date: data.date,
@@ -141,7 +149,56 @@ const ChatPage = () => {
                 }
             }
         });
+
+        socket.on('receive-file', (data) => {
+            if (data.type === 'one') {
+                const receivedMessage = {
+                    fileUrl: data.fileUrl,
+                    fileName: data.fileName,
+                    date: data.date,
+                    userDatumId: data.userDatumId,
+                    recipeintId: data.recipeintId
+                };
+                if (!isEqual(selectedChat[selectedChat.length - 1], receivedMessage)) {
+                    if ((memberId === data.recipeintId && userId === data.userDatumId) || (memberId === data.userDatumId && userId === data.recipeintId)) {
+                        setSelectedChat(prevChat => [...prevChat, receivedMessage]);
+                    }
+                    setlatestMessageFromMember({
+                        userDatumId: data.userDatumId,
+                        recipeintId: data.recipeintId,
+                        chatId: chatIdofMember,
+                        fileUrl: data.fileUrl,
+                        fileName: data.fileName,
+                        time: data.date
+                    })
+                }
+            }
+            else if (data.type === 'many') {
+                console.log(data);
+                const receivedMessage = {
+                    fileUrl: data.fileUrl,
+                    fileName: data.fileName,
+                    date: data.date,
+                    senderId: data.senderId,
+                    GroupNameDatumId: data.GroupNameDatumId
+                };
+                if (selectedChat.length === 0 || !isEqual(selectedChat[selectedChat.length - 1], receivedMessage)) {
+                    if (memberId === data.GroupNameDatumId || userId === data.senderId)
+                        setSelectedChat(prevChat => [...prevChat, receivedMessage]);
+                }
+                setlatestMessageFromMember({
+                    senderId: data.senderId,
+                    GroupNameDatumId: data.GroupNameDatumId,
+                    chatId: chatIdofMember,
+                    fileUrl: data.fileUrl,
+                    fileName: data.fileName,
+                    time: data.date
+                })
+            }
+        });
+
         return () => {
+            socket.off('receive-file');
             socket.off('receive-message');
         };
     }, [type, memberId, selectedChat, chatIdofMember]);
@@ -161,13 +218,13 @@ const ChatPage = () => {
             socket.emit('send-message', messageData);
         }
         else if (type === 'many') {
-            await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/add-message-to-group`, { data }, {
+            const result = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/add-message-to-group`, { data }, {
                 headers: {
                     'Authorization': localStorage.getItem('token')
                 }
             });
 
-            const messageData = { GroupNameDatumId: memberId, date: currentDateTime, messageText: messageText, senderId: userId, type: type }
+            const messageData = { GroupNameDatumId: memberId, date: currentDateTime, messageText: messageText, senderId: userId, type: type, userData: result.data }
             socket.emit('send-message', messageData);
         }
         await fetchChat(memberId)
@@ -217,7 +274,6 @@ const ChatPage = () => {
                     'Authorization': localStorage.getItem('token')
                 }
             });
-            console.log(result)
             if (result.data.isAdmin) {
                 setAdmin(true);
             }
@@ -258,6 +314,49 @@ const ChatPage = () => {
                 'Authorization': localStorage.getItem('token')
             }
         });
+    }
+
+    const handlePaperClipClick = (e) => {
+        e.preventDefault();
+        document.getElementById('fileInput').click();
+    }
+
+    const handleFileChange = (e) => {
+        const selectedFile = e.target.files[0];
+        if (selectedFile) {
+            onFileSubmit(selectedFile)
+        }
+        document.getElementById('fileInput').value = '';
+    }
+
+    const onFileSubmit = async (file) => {
+        const currentDateTime = moment().format('DD/MM/YYYY, hh:mm:ss A');
+        const fileName = file.name;
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('memberId', memberId);
+        formData.append('filename', fileName);
+        formData.append('currentDateTime', currentDateTime);
+        if (type === 'one') {
+            const response = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/add-file`, formData, {
+                headers: {
+                    'Authorization': localStorage.getItem('token'),
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            const fileData = { recipeintId: memberId, date: currentDateTime, fileName: fileName, fileUrl: response.data.fileUrl, userDatumId: userId, type: type }
+            socket.emit('send-file', fileData);
+        }
+        else if (type === 'many') {
+            const response = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/add-fileToGroup`, formData, {
+                headers: {
+                    'Authorization': localStorage.getItem('token'),
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+            const fileData = { GroupNameDatumId: memberId, date: currentDateTime, fileName: fileName, fileUrl: response.data.fileUrl, senderId: userId, type: type }
+            socket.emit('send-file', fileData);
+        }
     }
 
     const userId = localStorage.getItem('token') ? jwtDecode(localStorage.getItem('token')).userid : null
@@ -462,12 +561,35 @@ const ChatPage = () => {
                                     <div className="px-10 pt-5">
                                         <div key={index} className={`flex justify-${message.recipeintId === memberId ? 'end' : 'start'}`}>
                                             <div className={`max-w-[40%] bg-sky-${message.recipeintId === memberId ? '600' : '500'} rounded-b-xl rounded-${message.recipeintId === memberId ? 'tl-xl' : 'tr-xl'} p-4 mb-4 text-white`}>
-                                                <p>
+
+                                                {message.fileUrl && message.fileName && (
+                                                    <div className="flex items-center p-2 rounded-md ms-3">
+                                                        <div className="flex-1">
+                                                            <p>{message.fileName}</p>
+                                                            <p className="text-xs text-black">{formattedDate(message.date)}</p>
+                                                        </div>
+                                                        <a
+                                                            href={message.fileUrl}
+                                                            download={message.fileName}
+                                                            className="text-black hover:text-blue-700"
+                                                        >
+                                                            <i className="fas fa-download mr-1"></i>
+                                                        </a>
+                                                    </div>
+                                                )}
+                                                {!message.fileUrl && !message.fileMame && (
+                                                    <>
+                                                        <p>{message.messageText}</p>
+                                                        <p className="text-xs text-black float-right">{formattedDate(message.date)}</p>
+                                                    </>
+                                                )}
+
+                                                {/* <p>
                                                     {message.messageText}
                                                 </p>
                                                 <p className="text-xs text-black float-right">
                                                     {formattedDate(message.date)}
-                                                </p>
+                                                </p> */}
                                             </div>
                                         </div>
                                     </div>
@@ -476,12 +598,36 @@ const ChatPage = () => {
                                     <div className="px-10 pt-5">
                                         <div key={index} className={`flex justify-${message.senderId === userId ? 'end' : 'start'}`}>
                                             <div className={`max-w-[40%] bg-sky-${message.senderId === userId ? '600' : '500'} rounded-b-xl rounded-${message.senderId === userId ? 'tl-xl' : 'tr-xl'} p-4 mb-4 text-white`}>
+
+                                                {message.fileUrl && message.fileName && (
+                                                    <div className="flex items-center bg-gray-200 p-2 rounded-md ms-3">
+                                                        <div className="flex-1">
+                                                            <p>{message.fileName}</p>
+                                                            <p className="text-xs text-black">{formattedDate(message.date)}</p>
+                                                        </div>
+                                                        <a
+                                                            href={message.fileUrl}
+                                                            download={message.fileName}
+                                                            className="text-blue-500 hover:text-blue-700"
+                                                        >
+                                                            <i className="fas fa-download mr-1"></i>
+                                                        </a>
+                                                    </div>
+                                                )}
+                                                {!message.fileUrl && !message.fileName && (
+                                                    <>
+                                                        <p>{message.messageText}</p>
+                                                        <p className="text-xs text-black float-right">{formattedDate(message.date)}</p>
+                                                    </>
+                                                )}
+
+                                                {/* <h4 className="text-black">{message.userName}</h4>
                                                 <p>
                                                     {message.messageText}
                                                 </p>
                                                 <p className="text-xs text-black float-right">
                                                     {formattedDate(message.date)}
-                                                </p>
+                                                </p> */}
                                             </div>
                                         </div>
                                     </div>
@@ -490,7 +636,13 @@ const ChatPage = () => {
                         </div>
 
                         <div className="p-3 w-full flex items-center">
-                            <i className="fa-solid fa-paperclip text-lg ml-2 mr-5 cursor-pointer"></i>
+                            <input
+                                id="fileInput"
+                                type="file"
+                                className="hidden"
+                                onChange={handleFileChange}
+                            />
+                            <i className="fa-solid fa-paperclip text-lg ml-2 mr-5 cursor-pointer" onClick={handlePaperClipClick}></i>
                             <form className="flex w-full" onSubmit={sendMessage}>
                                 <input
                                     type="text"
