@@ -30,6 +30,7 @@ const ChatPage = () => {
     const [action, setAction] = useState('');
     const [chatIdofMember, setchatIdofMember] = useState('');
     const [latestMessageFromMember, setlatestMessageFromMember] = useState([]);
+    const [chatType, setChatType] = useState('todayChat')
 
 
     const formattedDate = (date) => {
@@ -252,7 +253,8 @@ const ChatPage = () => {
         setMemberId(chatId);
         if (type === 'one') {
             const result = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/get-chat`, {
-                memberId: chatId
+                memberId: chatId,
+                chatType: 'todayChat'
             }, {
                 headers: {
                     'Authorization': localStorage.getItem('token')
@@ -268,7 +270,8 @@ const ChatPage = () => {
         }
         else if (type === 'many') {
             const result = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/get-chat-from-group`, {
-                groupId: chatId
+                groupId: chatId,
+                chatType: 'todayChat'
             }, {
                 headers: {
                     'Authorization': localStorage.getItem('token')
@@ -356,6 +359,55 @@ const ChatPage = () => {
             });
             const fileData = { GroupNameDatumId: memberId, date: currentDateTime, fileName: fileName, fileUrl: response.data.fileUrl, senderId: userId, type: type }
             socket.emit('send-file', fileData);
+        }
+    }
+
+    const handleChatTypeClick = () => {
+        const newChatType = chatType === 'todayChat' ? 'archiveChat' : 'todayChat';
+        setChatType(newChatType);
+        onChatTypeClick(newChatType);
+    };
+    const buttonText = chatType === 'todayChat' ? 'Archived Chat' : 'Today Chat';
+
+    async function onChatTypeClick(chatType) {
+        if (type === 'one') {
+            const result = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/get-chat`, {
+                memberId: memberId,
+                chatType: chatType
+            }, {
+                headers: {
+                    'Authorization': localStorage.getItem('token')
+                }
+            });
+            if (result) {
+                setMemberId(memberId);
+                setSelectedChat(result.data);
+            }
+            else {
+                setSelectedChat([]);
+            }
+        }
+        else if (type === 'many') {
+            const result = await axios.post(`${process.env.REACT_APP_BACKEND_HOST_NAME}/chat/get-chat-from-group`, {
+                groupId: memberId,
+                chatType: chatType
+            }, {
+                headers: {
+                    'Authorization': localStorage.getItem('token')
+                }
+            });
+
+            if (result.data.isAdmin) {
+                setAdmin(true);
+            }
+
+            if (result.data.result) {
+                setMemberId(memberId);
+                setSelectedChat(result.data.result);
+            } else {
+                setSelectedChat([]);
+            }
+
         }
     }
 
@@ -496,6 +548,8 @@ const ChatPage = () => {
                                                 <button className="btn btn-primary btn-sm" onClick={() => handleMenuItemClick('removeMember')}>Remove Member</button>
                                             </div>
                                         )}
+
+                                        <button className="" onClick={handleChatTypeClick}>{buttonText}</button>
                                         <button className="btn btn-primary btn-sm" onClick={() => handleMenuItemClick('leaveGroup')}>Leave Group</button>
                                     </div>
                                 )}

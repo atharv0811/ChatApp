@@ -21,6 +21,10 @@ const GroupMembers = require("./model/groupMemberModel");
 const GroupChatStorage = require("./model/groupStorageModel");
 const GroupFileModal = require('./model/groupFileModel');
 const ChatFileModal = require('./model/chatFileModel');
+const ArchiveChatFileModal = require('./model/archievChatFileModel');
+const ArchiveChatStorage = require('./model/archiveChatStorageModel');
+const ArchiveGroupFileModel = require('./model/archiveGroupFileModel');
+const ArchiveGroupStorage = require('./model/archiveGroupStorageModel');
 const port = 4000
 
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -48,7 +52,14 @@ userDB.hasMany(ChatFileModal);
 ChatFileModal.belongsTo(userDB);
 GroupName.hasMany(GroupFileModal);
 GroupFileModal.belongsTo(GroupName);
-
+userDB.hasMany(ArchiveChatStorage);
+ArchiveChatStorage.belongsTo(userDB);
+userDB.hasMany(ArchiveChatFileModal);
+ArchiveChatFileModal.hasMany(userDB);
+GroupName.hasMany(ArchiveGroupStorage);
+ArchiveGroupStorage.belongsTo(GroupName);
+GroupName.hasMany(ArchiveGroupFileModel);
+ArchiveGroupFileModel.belongsTo(GroupName);
 
 sequelize.sync({ force: false, logging: false }).then(() => {
     http.listen(port, () => {

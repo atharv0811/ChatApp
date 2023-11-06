@@ -10,6 +10,12 @@ const groupChatStorage = require('../model/groupStorageModel');
 const GroupFileModal = require('../model/groupFileModel');
 const ChatFileModal = require('../model/chatFileModel');
 const AWS = require('aws-sdk');
+const cron = require('cron');
+const { Op } = require('sequelize');
+const ArchiveChatFileModal = require('../model/archievChatFileModel');
+const ArchiveChatStorage = require('../model/archiveChatStorageModel');
+const ArchiveGroupFileModel = require('../model/archiveGroupFileModel');
+const ArchiveGroupStorage = require('../model/archiveGroupStorageModel');
 const { Sequelize } = require('sequelize');
 const sequelize = require('../db');
 
@@ -94,9 +100,16 @@ exports.addMessage = async (req, res) => {
         const senderId = req.user.id;
         const memberId = parseInt(req.body.data.memberId);
 
-
         await chatStorageModel.create({
             id: getRandomInt(100000, 999999),
+            recipeintId: memberId,
+            messageText: messageText,
+            date: currentDateTime,
+            userDatumId: senderId
+        })
+
+        await ArchiveChatStorage.create({
+            id: id,
             recipeintId: memberId,
             messageText: messageText,
             date: currentDateTime,
@@ -112,32 +125,104 @@ exports.getChat = async (req, res) => {
     try {
         const userId = parseInt(req.user.id);
         const memberId = parseInt(req.body.memberId);
+        const chatType = req.body.chatType;
 
-        let chatListFirstCondition = await chatStorageModel.findAll({
-            where: {
-                recipeintId: memberId
-            },
-            order: [['date', 'DESC']],
-            limit: 5
-        });
+        if (chatType == 'todayChat') {
+            let chatListFirstCondition = await chatStorageModel.findAll({
+                where: {
+                    recipeintId: memberId
+                },
+                order: [['date', 'DESC']]
+            });
 
-        let chatListSecondCondition = await chatStorageModel.findAll({
-            where: {
-                recipeintId: userId,
-                userDatumId: memberId
-            },
-            attributes: ['messageText', 'date', 'userDatumId', 'recipeintId'],
-            order: [['date', 'DESC']],
-            // limit: 5
-        });
+            let chatListSecondCondition = await chatStorageModel.findAll({
+                where: {
+                    recipeintId: userId,
+                    userDatumId: memberId
+                },
+                attributes: ['messageText', 'date', 'userDatumId', 'recipeintId'],
+                order: [['date', 'DESC']]
+            });
 
-        let combinedChatList = chatListFirstCondition.concat(chatListSecondCondition);
-        combinedChatList.sort((a, b) => {
-            const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
-            const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
-            return dateA - dateB;
-        });
-        return res.status(201).json(combinedChatList);
+            let chatListThirdCondition = await ChatFileModal.findAll({
+                where: {
+                    recipeintId: memberId,
+                    userDatumId: userId
+                },
+                attributes: ['fileName', 'fileUrl', 'date', 'userDatumId', 'recipeintId']
+                ,
+                order: [['date', 'DESC']],
+            });
+
+            let chatListFourthCondition = await ChatFileModal.findAll({
+                where: {
+                    recipeintId: userId,
+                    userDatumId: memberId
+                },
+                attributes: ['fileName', 'fileUrl', 'date', 'userDatumId', 'recipeintId']
+                ,
+                order: [['date', 'DESC']],
+            })
+
+            let combinedChatList = chatListFirstCondition.concat(chatListSecondCondition).concat(chatListThirdCondition).concat(chatListFourthCondition);
+            combinedChatList.sort((a, b) => {
+                const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
+                const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
+                return dateA - dateB;
+            });
+            return res.status(201).json(combinedChatList);
+        }
+
+
+        if (chatType == 'archiveChat') {
+            let chatListFirstCondition = await ArchiveChatStorage.findAll({
+                where: {
+                    recipeintId: memberId,
+                    userDatumId: userId
+                },
+                attributes: ['messageText', 'date', 'userDatumId', 'recipeintId']
+                ,
+                order: [['date', 'DESC']],
+            });
+
+            let chatListSecondCondition = await ArchiveChatStorage.findAll({
+                where: {
+                    recipeintId: userId,
+                    userDatumId: memberId
+                },
+                attributes: ['messageText', 'date', 'userDatumId', 'recipeintId']
+                ,
+                order: [['date', 'DESC']],
+            });
+
+            let chatListThirdCondition = await ArchiveChatFileModal.findAll({
+                where: {
+                    recipeintId: memberId,
+                    userDatumId: userId
+                },
+                attributes: ['fileName', 'fileUrl', 'date', 'userDatumId', 'recipeintId']
+                ,
+                order: [['date', 'DESC']],
+            })
+
+            let chatListFourthCondition = await ArchiveChatFileModal.findAll({
+                where: {
+                    recipeintId: userId,
+                    userDatumId: memberId
+                },
+                attributes: ['fileName', 'fileUrl', 'date', 'userDatumId', 'recipeintId']
+                ,
+                order: [['date', 'DESC']],
+            })
+
+            let combinedChatList = chatListFirstCondition.concat(chatListSecondCondition).concat(chatListThirdCondition).concat(chatListFourthCondition);
+            combinedChatList.sort((a, b) => {
+                const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
+                const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
+                return dateA - dateB;
+            });
+            return res.status(201).json(combinedChatList);
+        }
     } catch (error) {
         console.log(error)
         res.status(500).json({ error: 'Internal Server Error' });
@@ -253,6 +338,14 @@ exports.addMessageToGroup = async (req, res) => {
             date: currentDateTime,
             GroupNameId: memberId
         })
+
+        await ArchiveGroupStorage.create({
+            id: id,
+            senderId: senderId,
+            messageText: messageText,
+            date: currentDateTime,
+            GroupNameId: memberId
+        })
         return res.status(201).json({ userName: senderName, memberId: senderId });
     } catch (error) {
         console.log(error)
@@ -261,76 +354,83 @@ exports.addMessageToGroup = async (req, res) => {
 
 exports.getChatFromGroup = async (req, res) => {
     try {
-        // const groupId = parseInt(req.body.groupId);
-        // const userId = parseInt(req.user.id);
-        // let result = await groupChatStorage.findAll({
-        //     where: {
-        //         GroupNameId: groupId
-        //     },
-        //     order: [['date', 'DESC']],
-        //     limit: 10
-        // });
-        // let isAdmin = await groupMember.findOne({
-        //     where: {
-        //         userDatumId: userId,
-        //         GroupNameId: groupId,
-        //         isAdmin: 1
-        //     },
-        //     attributes: ['isAdmin']
-        // });
-        // result.sort((a, b) => {
-        //     const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
-        //     const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
-        //     return dateA - dateB;
-        // });
-        // res.status(200).send({ isAdmin: isAdmin ? isAdmin.isAdmin : false, result: result });
-
-
         const groupId = parseInt(req.body.groupId);
         const userId = parseInt(req.user.id);
+        const chatType = req.body.chatType;
         const userNamesData = await chatMemberModel.findAll({ where: { userDatumId: userId }, attributes: ['ContactName', 'memberId'] });
         const userNamesMap = new Map(userNamesData.map(data => [data.memberId, data.ContactName]));
         const mapSenderIdToUserName = senderId => userNamesMap.get(senderId) || 'You';
 
-        let result1 = await groupChatStorage.findAll({
-            where: {
-                GroupNameId: groupId
-            },
-            order: [['date', 'DESC']],
-            attributes: ['messageText', 'date', 'senderId', 'GroupNameId'],
-            // limit: 10
-        });
+        if (chatType == 'archiveChat') {
+            let result1 = await groupChatStorage.findAll({
+                where: {
+                    GroupNameId: groupId
+                },
+                order: [['date', 'DESC']],
+                attributes: ['messageText', 'date', 'senderId', 'GroupNameId']
+            });
 
-        // let result2 = await ChatGroupFileModal.findAll({
-        //     where: {
-        //         GroupNameDatumId: groupId
-        //     },
-        //     order: [['date', 'DESC']],
-        //     attributes: ['fileName', 'fileUrl', 'date', 'senderId', 'GroupNameDatumId'],
-        //     // limit: 10
-        // });
+            let result2 = await ArchiveGroupFileModel.findAll({
+                where: {
+                    GroupNameId: groupId
+                },
+                order: [['date', 'DESC']],
+                attributes: ['fileName', 'fileUrl', 'date', 'senderId', 'GroupNameId'],
+            });
 
-        let isAdmin = await groupMemberModel.findOne({
-            where: {
-                userDatumId: userId,
-                GroupNameId: groupId,
-                isAdmin: 1
-            },
-            attributes: ['isAdmin']
-        });
-        let result = result1
-        result = result.map(item => ({
-            ...item.dataValues,
-            userName: mapSenderIdToUserName(item.dataValues.senderId)
-        }))
-        result.sort((a, b) => {
-            const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
-            const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
-            return dateA - dateB;
-        });
-        // console.log(result);
-        return res.status(200).send({ isAdmin: isAdmin ? isAdmin.isAdmin : false, result: result });
+            let isAdmin = await groupMemberModel.findOne({
+                where: {
+                    userDatumId: userId,
+                    GroupNameId: groupId,
+                    isAdmin: 1
+                },
+                attributes: ['isAdmin']
+            });
+            let result = result1.concat(result2)
+            result = result.map(item => ({
+                ...item.dataValues,
+                userName: mapSenderIdToUserName(item.dataValues.senderId)
+            }))
+            result.sort((a, b) => {
+                const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
+                const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
+                return dateA - dateB;
+            });
+            return res.status(200).send({ isAdmin: isAdmin ? isAdmin.isAdmin : false, result: result });
+        }
 
+        if (chatType == 'todayChat') {
+            let result1 = await groupChatStorage.findAll({
+                where: {
+                    GroupNameId: groupId
+                },
+                order: [['date', 'DESC']],
+                attributes: ['messageText', 'date', 'senderId', 'GroupNameId']
+            });
+            let result2 = await GroupFileModal.findAll({
+                where: {
+                    GroupNameId: groupId
+                },
+                order: [['date', 'DESC']],
+                attributes: ['fileName', 'fileUrl', 'date', 'senderId', 'GroupNameId']
+            });
+
+            let isAdmin = await groupMember.findOne({
+                where: {
+                    userDatumId: userId,
+                    GroupNameId: groupId,
+                    isAdmin: 1
+                },
+                attributes: ['isAdmin']
+            });
+            const result = result1.concat(result2)
+            result.sort((a, b) => {
+                const dateA = moment(a.date, 'DD/MM/YYYY, hh:mm:ss A');
+                const dateB = moment(b.date, 'DD/MM/YYYY, hh:mm:ss A');
+                return dateA - dateB;
+            });
+            return res.status(200).send({ isAdmin: isAdmin ? isAdmin.isAdmin : false, result: result });
+        }
     } catch (error) {
         console.log(error)
         res.status(500).send('Internal Server Error');
@@ -357,6 +457,15 @@ exports.addfile = async (req, res) => {
         const s3Response = await s3.upload(params).promise();
         await ChatFileModal.create({
             id: getRandomInt(100000, 999999),
+            recipeintId: memberId,
+            fileName: filename,
+            fileUrl: s3Response.Location,
+            date: currentDateTime,
+            userDatumId: senderId
+        })
+
+        await ArchiveChatFileModal.create({
+            id: id,
             recipeintId: memberId,
             fileName: filename,
             fileUrl: s3Response.Location,
@@ -400,6 +509,47 @@ exports.addfileToGroup = async (req, res) => {
         console.log(error)
     }
 }
+
+const cronSchedule = '0 0 * * *';
+const cronJob = new cron.CronJob(cronSchedule, async () => {
+    try {
+        const currentDate = moment().format('DD/MM/YYYY, hh:mm:ss A');
+        await chatStorageModel.destroy({
+            where: {
+                date: {
+                    [Op.ne]: currentDate
+                }
+            }
+        });
+        await ChatFileModal.destroy({
+            where: {
+                date: {
+                    [Op.ne]: currentDate
+                }
+            }
+        });
+        await groupChatStorage.destroy({
+            where: {
+                date: {
+                    [Op.ne]: currentDate
+                }
+            }
+        });
+        await GroupFileModal.destroy({
+            where: {
+                date: {
+                    [Op.ne]: currentDate
+                }
+            }
+        });
+
+        console.log('Cron job executed successfully.');
+    } catch (error) {
+        console.error('Error executing cron job:', error);
+    }
+}, null, true);
+
+cronJob.start();
 
 function getRandomInt(min, max) {
     const buffer = crypto.randomBytes(4);
